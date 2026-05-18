@@ -1,0 +1,18 @@
+max-level: 50
+exp-formula:
+  base: 100
+  level-multiplier: 75
+  level-square-multiplier: 5
+farming-exp: 5
+mining-normal-exp: 8
+mining-rare-exp: 15
+fishing-normal-exp: 12
+fishing-treasure-exp: 25
+bonus-chance-per-level: 0.4
+bonus-chance-max: 20.0
+cooldowns:
+  farming: 200
+  mining: 200
+  fishing: 1000
+autosave-interval-minutes: 5
+passive-effect-interval-seconds: 5
