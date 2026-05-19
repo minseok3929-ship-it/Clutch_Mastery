@@ -1,0 +1,10 @@
+name: ClutchMastery
+version: ${version}
+main: com.clutch.mastery.ClutchMasteryPlugin
+api-version: '1.21'
+author: CLUTCH
+folia-supported: false
+commands:
+  숙련도:
+    description: ClutchMastery 숙련도 명령어
+    usage: /숙련도 [정보|랭킹|지급|설정|초기화]
