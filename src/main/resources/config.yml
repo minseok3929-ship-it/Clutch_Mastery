@@ -11,7 +11,7 @@ fishing-treasure-exp: 25
 bonus-chance-per-level: 0.4
 bonus-chance-max: 20.0
 cooldowns:
-  farming: 200
+  farming: 0
   mining: 200
   fishing: 1000
 autosave-interval-minutes: 5

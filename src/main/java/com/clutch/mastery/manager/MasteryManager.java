@@ -21,6 +21,7 @@ public class MasteryManager {
     private final JavaPlugin plugin;
     private final DatabaseManager databaseManager;
     private final Map<UUID, EnumMap<MasteryType, MasteryData>> cache = new ConcurrentHashMap<>();
+    private final Set<UUID> dirtyPlayers = ConcurrentHashMap.newKeySet();
     private final Random random = new Random();
 
     public MasteryManager(JavaPlugin plugin, DatabaseManager databaseManager) {
@@ -36,27 +37,30 @@ public class MasteryManager {
     public void unloadPlayer(UUID uuid) {
         savePlayer(uuid);
         cache.remove(uuid);
+        dirtyPlayers.remove(uuid);
     }
 
     public void savePlayer(UUID uuid) {
         EnumMap<MasteryType, MasteryData> data = cache.get(uuid);
         if (data != null) {
             databaseManager.savePlayer(uuid, data);
+            dirtyPlayers.remove(uuid);
         }
     }
 
     public void saveAllOnlineAsync() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            savePlayer(player.getUniqueId());
+        for (UUID uuid : Set.copyOf(dirtyPlayers)) {
+            savePlayer(uuid);
         }
     }
 
     public void saveAllOnlineNow() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            EnumMap<MasteryType, MasteryData> data = cache.get(player.getUniqueId());
+        for (UUID uuid : Set.copyOf(dirtyPlayers)) {
+            EnumMap<MasteryType, MasteryData> data = cache.get(uuid);
             if (data != null) {
-                databaseManager.savePlayerNow(player.getUniqueId(), data);
+                databaseManager.savePlayerNow(uuid, data);
             }
+            dirtyPlayers.remove(uuid);
         }
     }
 
@@ -88,16 +92,26 @@ public class MasteryManager {
             return false;
         }
 
-        int beforeLevel = data.getLevel();
         data.setExp(data.getExp() + amount);
-        while (data.getLevel() < maxLevel && data.getExp() >= getRequiredExp(data.getLevel())) {
-            data.setExp(data.getExp() - getRequiredExp(data.getLevel()));
+
+        int beforeLevel = data.getLevel();
+        while (data.getLevel() < maxLevel) {
+            int requiredExp = getRequiredExp(data.getLevel());
+            if (data.getExp() < requiredExp) {
+                break;
+            }
+
+            data.setExp(data.getExp() - requiredExp);
             data.setLevel(data.getLevel() + 1);
+
+            if (data.getLevel() >= maxLevel) {
+                data.setLevel(maxLevel);
+                data.setExp(0);
+                break;
+            }
         }
-        if (data.getLevel() >= maxLevel) {
-            data.setLevel(maxLevel);
-            data.setExp(0);
-        }
+
+        markDirty(player.getUniqueId());
 
         int required = data.getLevel() >= maxLevel ? getRequiredExp(maxLevel) : getRequiredExp(data.getLevel());
         player.sendActionBar(Component.text("§a" + type.getKoreanName() + " 숙련도 §f+" + amount + " EXP §7(" + data.getExp() + "/" + required + ")"));
@@ -127,11 +141,17 @@ public class MasteryManager {
         MasteryData data = getData(uuid, type);
         data.setLevel(Math.min(getMaxLevel(), Math.max(1, level)));
         data.setExp(0);
+        markDirty(uuid);
     }
 
     public void reset(UUID uuid) {
         cache.put(uuid, createDefaultData());
+        markDirty(uuid);
         databaseManager.resetPlayer(uuid);
+    }
+
+    private void markDirty(UUID uuid) {
+        dirtyPlayers.add(uuid);
     }
 
     public int getRequiredExp(int level) {
